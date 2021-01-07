@@ -82,6 +82,13 @@ func (c Customer) GetPrimaryEmail() string {
 
 // FetchCustomers gets the full list of Customers in the QuickBooks account.
 func (c *Client) FetchCustomers() ([]Customer, error) {
+	return c.FetchCustomersWhere("")
+}
+
+func (c *Client) FetchCustomersWhere(where string) ([]Customer, error) {
+	if where != "" {
+		where = " WHERE " + where
+	}
 
 	// See how many customers there are.
 	var r struct {
@@ -89,7 +96,7 @@ func (c *Client) FetchCustomers() ([]Customer, error) {
 			TotalCount int
 		}
 	}
-	err := c.query("SELECT COUNT(*) FROM Customer", &r)
+	err := c.query("SELECT COUNT(*) FROM Customer"+where, &r)
 	if err != nil {
 		return nil, err
 	}
@@ -100,7 +107,7 @@ func (c *Client) FetchCustomers() ([]Customer, error) {
 
 	var customers = make([]Customer, 0, r.QueryResponse.TotalCount)
 	for i := 0; i < r.QueryResponse.TotalCount; i += queryPageSize {
-		var page, err = c.fetchCustomerPage(i + 1)
+		var page, err = c.fetchCustomerPage(i+1, where)
 		if err != nil {
 			return nil, err
 		}
@@ -110,7 +117,7 @@ func (c *Client) FetchCustomers() ([]Customer, error) {
 }
 
 // Fetch one page of results, because we can't get them all in one query.
-func (c *Client) fetchCustomerPage(startpos int) ([]Customer, error) {
+func (c *Client) fetchCustomerPage(startpos int, where string) ([]Customer, error) {
 
 	var r struct {
 		QueryResponse struct {
@@ -119,7 +126,7 @@ func (c *Client) fetchCustomerPage(startpos int) ([]Customer, error) {
 			MaxResults    int
 		}
 	}
-	q := "SELECT * FROM Customer ORDERBY Id STARTPOSITION " +
+	q := "SELECT * FROM Customer " + where + " ORDERBY Id STARTPOSITION " +
 		strconv.Itoa(startpos) + " MAXRESULTS " + strconv.Itoa(queryPageSize)
 	err := c.query(q, &r)
 	if err != nil {

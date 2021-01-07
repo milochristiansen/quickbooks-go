@@ -26,6 +26,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/url"
+	"strings"
 )
 
 // Client is your handle to the QuickBooks API.
@@ -104,4 +105,16 @@ func (c *Client) query(query string, out interface{}) error {
 	}
 
 	return json.NewDecoder(res.Body).Decode(out)
+}
+
+var sqlEscaper = strings.NewReplacer(
+	`-`, "\\-",
+	`'`, "\\'",
+	`\`, "\\",
+)
+
+// QueryEscape returns a copy of the string escaped for use in a QBO query.
+// Escaping SQL is a fools game, but QBO doesn't support doing things the right way so here we are.
+func (c *Client) QueryEscape(s string) string {
+	return sqlEscaper.Replace(s)
 }
